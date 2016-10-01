@@ -1,2 +1,2 @@
 # grid-gateway
-Gateway proxy for Grid MUD server
+Work in progress.
