@@ -1,3 +1,9 @@
+/* Copyright (C) Ben Maizels - All Rights Reserved
+ * Unauthorized copying of this file, via any medium is strictly prohibited
+ * Proprietary and confidential
+ * Written by Ben Maizels <ben@dreamsphere.io>, October 2016
+ */
+
 package io.dreamsphere.grid.gateway;
 
 import org.junit.Before;
@@ -74,11 +80,30 @@ public class TcpConnectionTest {
     }
 
     @Test
-    public void readConsumesSmallerBuffer() throws IOException {
+    public void readConsumesEntireBuffer() throws IOException {
         byte[] buffer = new byte[10];
         int actualBytesRead = tcpConnection.read(buffer);
         assertThat(actualBytesRead, is(3));
         assertThat(Arrays.copyOfRange(buffer, 0, 3), equalTo(testBytes));
+    }
+
+    @Test
+    public void readCanReadPartialBuffer() throws IOException {
+        byte[] buffer = new byte[2];
+        int actualBytesRead = tcpConnection.read(buffer);
+        assertThat(actualBytesRead, is(2));
+        assertThat(buffer, equalTo(Arrays.copyOfRange(testBytes,0,2)));
+        actualBytesRead = tcpConnection.read(buffer);
+        assertThat(actualBytesRead, is(1));
+        assertThat(buffer[0], equalTo(testBytes[2]));
+    }
+
+    @Test
+    public void readDetectsEndOfStreamByReturningNegativeOne() throws IOException {
+        byte[] buffer = new byte[10];
+        tcpConnection.read(buffer);
+        int actualBytesRead = tcpConnection.read(buffer);
+        assertThat(actualBytesRead, is(-1));
     }
 
     @Test(expected= IOException.class)
