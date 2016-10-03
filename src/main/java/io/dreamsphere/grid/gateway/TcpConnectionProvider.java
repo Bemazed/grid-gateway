@@ -6,11 +6,12 @@
 
 package io.dreamsphere.grid.gateway;
 
+import java.io.IOException;
 import java.net.Socket;
 
 class TcpConnectionProvider implements ConnectionProvider {
     @Override
-    public Connection get(Socket socket) {
+    public Connection get(Socket socket) throws IOException {
         return new TcpConnection(socket);
     }
 }

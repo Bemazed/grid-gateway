@@ -6,8 +6,9 @@
 
 package io.dreamsphere.grid.gateway;
 
+import java.io.IOException;
 import java.net.Socket;
 
 interface ConnectionProvider {
-    Connection get(Socket socket);
+    Connection get(Socket socket) throws IOException;
 }

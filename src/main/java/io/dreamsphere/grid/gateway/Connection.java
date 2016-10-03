@@ -13,4 +13,5 @@ interface Connection {
     void send(byte[] message, int length) throws IOException;
     int read(byte[] buffer) throws IOException;
     void close() throws IOException;
+    int readAvailable() throws IOException;
 }

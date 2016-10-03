@@ -111,4 +111,23 @@ public class TcpConnectionTest {
         when(mockSocket.isClosed()).thenReturn(true);
         tcpConnection.read(new byte[1]);
     }
+
+    @Test
+    public void readAvailableReturnsCorrectEstimateWhenDataAvailable() throws IOException {
+        int actualAvailable = tcpConnection.readAvailable();
+        assertThat(actualAvailable, is(3));
+    }
+
+    @Test
+    public void readAvailableReturnsCorrectEstimateWhenDataNotAvailable() throws IOException {
+        tcpConnection.read(new byte[10]);
+        int actualAvailable = tcpConnection.readAvailable();
+        assertThat(actualAvailable, is(0));
+    }
+
+    @Test(expected= IOException.class)
+    public void readAvailableOnClosedSocketThrowsIOException() throws IOException {
+        when(mockSocket.isClosed()).thenReturn(true);
+        tcpConnection.readAvailable();
+    }
 }

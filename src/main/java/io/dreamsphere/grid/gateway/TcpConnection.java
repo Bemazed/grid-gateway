@@ -13,11 +13,13 @@ import java.net.Socket;
 
 class TcpConnection implements Connection {
     private final Socket socket;
-    private OutputStream outputStream = null;
-    private InputStream inputStream = null;
+    private final OutputStream outputStream;
+    private final InputStream inputStream;
 
-    TcpConnection(Socket socket) {
+    TcpConnection(Socket socket) throws IOException {
         this.socket = socket;
+        this.outputStream = socket.getOutputStream();
+        this.inputStream = socket.getInputStream();
     }
 
     @Override
@@ -27,46 +29,44 @@ class TcpConnection implements Connection {
 
     @Override
     public void send(byte[] message, int length) throws IOException {
-        synchronized(socket) {
-            getOutputStream().write(message, 0, length);
+        synchronized(outputStream) {
+            verifySocketOpen();
+            outputStream.write(message, 0, length);
         }
     }
 
     @Override
     public int read(byte[] buffer) throws IOException {
-        synchronized(socket) {
-            return getInputStream().read(buffer);
+        synchronized(inputStream) {
+            verifySocketOpen();
+            return inputStream.read(buffer);
+        }
+    }
+
+    @Override
+    public int readAvailable() throws IOException {
+        synchronized(inputStream) {
+            verifySocketOpen();
+            return inputStream.available();
         }
     }
 
     @Override
     public void close() throws IOException {
         synchronized(socket) {
-            if (!socket.isClosed()) {
-                socket.close();
+            synchronized(inputStream) {
+                synchronized (outputStream) {
+                    if (!socket.isClosed()) {
+                        socket.close();
+                    }
+                }
             }
         }
     }
 
-    private OutputStream getOutputStream() throws IOException {
+    private void verifySocketOpen() throws IOException {
         if (socket.isClosed()) {
-            throw new IOException("Attempt to get output stream of a closed socket");
+            throw new IOException("Attempt to interact with a closed socket");
         }
-        if (outputStream == null) {
-            outputStream = socket.getOutputStream();
-        }
-
-        return outputStream;
-    }
-
-    private InputStream getInputStream() throws IOException {
-        if (socket.isClosed()) {
-            throw new IOException("Attempt to get input stream of a closed socket");
-        }
-        if (inputStream == null) {
-            inputStream = socket.getInputStream();
-        }
-
-        return inputStream;
     }
 }
