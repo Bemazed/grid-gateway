@@ -7,17 +7,30 @@
 package io.dreamsphere.grid.gateway;
 
 class TelnetCodes {
-    final static byte OPT_SUPPRESS_GO_AHEAD = 3;
-    final static byte OPT_STATUS = 5;
-    final static byte OPT_ECHO = 1;
-    final static byte OPT_TIMING_MARK = 6;
-    final static byte OPT_TERMINAL_TYPE = 24;
-    final static byte OPT_WINDOW_SIZE = 31;
-    final static byte OPT_TERMINAL_SPEED = 32;
-    final static byte OPT_REMOTE_FLOW_CONTROL = 33;
-    final static byte OPT_LINEMODE = 34;
+    // Network Virtual Terminal codes
+    final static byte NVT_NUL = 0;
+    final static byte NVT_BEL = 7;
+    final static byte NVT_BS = 8;
+    final static byte NVT_HT = 9;
+    final static byte NVT_LF = 10;
+    final static byte NVT_VT = 11;
+    final static byte NVT_FF = 12;
+    final static byte NVT_CR = 13;
+    final static byte NVT_NAK = 21;
+
+    // Telnet options (unsupported ones commented out)
+    //final static byte OPT_SUPPRESS_GO_AHEAD = 3;
+    //final static byte OPT_STATUS = 5;
+    //final static byte OPT_ECHO = 1;
+    //final static byte OPT_TIMING_MARK = 6;
+    //final static byte OPT_TERMINAL_TYPE = 24;
+    //final static byte OPT_WINDOW_SIZE = 31;
+    //final static byte OPT_TERMINAL_SPEED = 32;
+    //final static byte OPT_REMOTE_FLOW_CONTROL = 33;
+    //final static byte OPT_LINEMODE = 34;
     final static byte OPT_ENVIRONMENT_VARIABLES = 36;
 
+    // Telnet commands
     final static byte CMD_SE = (byte) 240;
     final static byte CMD_NOP = (byte) 241;
     final static byte CMD_DM = (byte) 242;

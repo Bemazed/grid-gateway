@@ -359,4 +359,196 @@ public class TelnetConnectionTest {
         assertThat(bytesRead, is(-1));
         assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
     }
+
+    @Test
+    public void telnetSupportsNOP() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_NOP,
+        };
+        byte[] expectedResponse = {
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetIgnoresDM() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_DM,
+        };
+        byte[] expectedResponse = {
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetIgnoresBRK() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_BRK,
+        };
+        byte[] expectedResponse = {
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetIgnoresIP() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_IP,
+        };
+        byte[] expectedResponse = {
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetIgnoresAO() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_AO,
+        };
+        byte[] expectedResponse = {
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetIgnoresGA() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_GA,
+        };
+        byte[] expectedResponse = {
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetRespondsToAYTWithNUL() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_AYT,
+        };
+        byte[] expectedResponse = {
+                TelnetCodes.NVT_NUL
+        };
+
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(new byte[10]);
+        assertThat(bytesRead, is(-1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+    }
+
+    @Test
+    public void telnetTurnsECIntoBS() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_EC,
+        };
+        byte[] expectedResponse = {
+        };
+        byte[] expectedInput = {
+                TelnetCodes.NVT_BS
+        };
+
+        byte[] actualInput = new byte[10];
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(actualInput);
+        assertThat(bytesRead, is(1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+        assertThat(actualInput[0], equalTo(expectedInput[0]));
+    }
+
+    @Test
+    public void telnetTurnsELIntoNAK() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_EL,
+        };
+        byte[] expectedResponse = {
+        };
+        byte[] expectedInput = {
+                TelnetCodes.NVT_NAK
+        };
+
+        byte[] actualInput = new byte[10];
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(actualInput);
+        assertThat(bytesRead, is(1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+        assertThat(actualInput[0], equalTo(expectedInput[0]));
+    }
+
+    @Test
+    public void telnetIgnoresUnsupportedSuboptionNegotiation() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_SB,
+                TelnetCodes.OPT_ENVIRONMENT_VARIABLES,
+                0, 'a', 'b', 'c',
+                TelnetCodes.CMD_IAC,
+                TelnetCodes.CMD_SE,
+                'd', 'e', 'f'
+        };
+        byte[] expectedResponse = {
+        };
+        byte[] expectedInput = {
+                'd', 'e', 'f'
+        };
+
+        byte[] actualInput = new byte[10];
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(actualInput);
+        assertThat(bytesRead, is(3));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+        assertThat(Arrays.copyOfRange(actualInput,0,expectedInput.length), equalTo(expectedInput));
+    }
+
+    @Test
+    public void telnetForwardsUnrecognizedTelnetCommandToStream() throws IOException {
+        byte[] command = {
+                TelnetCodes.CMD_IAC,
+                'a'
+        };
+        byte[] expectedResponse = {
+        };
+        byte[] expectedInput = {
+                'a'
+        };
+
+        byte[] actualInput = new byte[10];
+        TelnetConnection telnetConnection = createTestConnection(command,2);
+        int bytesRead = telnetConnection.read(actualInput);
+        assertThat(bytesRead, is(1));
+        assertThat(fakeOutputStream.toByteArray(), equalTo(expectedResponse));
+        assertThat(Arrays.copyOfRange(actualInput,0,expectedInput.length), equalTo(expectedInput));
+    }
+
 }

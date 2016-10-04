@@ -9,6 +9,7 @@ package io.dreamsphere.grid.gateway;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 class TelnetConnection implements Connection {
     private static final int DEFAULT_READ_BUFFER_SIZE = 1024;
@@ -29,6 +30,7 @@ class TelnetConnection implements Connection {
     private int readBufferPosMark = 0;
     private int readBufferPos = 0;
     private State state = State.READY;
+    private boolean subnegotation = false;
 
     TelnetConnection(Connection connection, int readBufferSize) {
         this.connection = connection;
@@ -84,9 +86,10 @@ class TelnetConnection implements Connection {
                 // Process the next byte in the read buffer if there is one available
                 if (readBufferPos < readBufferPosMark) {
                     byte nextByte = readBuffer[readBufferPos++];
+                    Optional<Byte> byteToStream = processByteFromInputStream(nextByte);
 
-                    if (!processByteFromInputStream(nextByte)) {
-                        buffer[bufferPos++] = nextByte;
+                    if (byteToStream.isPresent()) {
+                        buffer[bufferPos++] = byteToStream.get();
                     }
                 }
 
@@ -103,7 +106,7 @@ class TelnetConnection implements Connection {
         return result;
     }
 
-    private boolean processByteFromInputStream(byte byteRead) throws IOException {
+    private Optional<Byte> processByteFromInputStream(byte byteRead) throws IOException {
         switch (state) {
             case READY:
                 return processByteFromReadyState(byteRead);
@@ -121,46 +124,68 @@ class TelnetConnection implements Connection {
             case DONT_RECEIVED:
                 receivedDont(byteRead);
                 break;
-            default:
-                throw new RuntimeException("Unknown telnet state");
         }
 
         state = State.READY;
-        return true;
+        return Optional.empty();
     }
 
-    private boolean processByteFromReadyState(byte byteRead) {
+    private Optional<Byte> processByteFromReadyState(byte byteRead) {
         switch (byteRead) {
             case TelnetCodes.CMD_IAC:
                 state = State.IAC_RECEIVED;
-                return true;
+                return Optional.empty();
             default:
-                return false;
+                return subnegotation ? Optional.empty() : Optional.of(byteRead);
         }
     }
 
-    private boolean processByteFromIacReceivedState(byte byteRead) {
+    private Optional<Byte> processByteFromIacReceivedState(byte byteRead) throws IOException {
         switch (byteRead) {
             case TelnetCodes.CMD_WILL:
                 state = State.WILL_RECEIVED;
-                return true;
+                return Optional.empty();
             case TelnetCodes.CMD_WONT:
                 state = State.WONT_RECEIVED;
-                return true;
+                return Optional.empty();
             case TelnetCodes.CMD_DO:
                 state = State.DO_RECEIVED;
-                return true;
+                return Optional.empty();
             case TelnetCodes.CMD_DONT:
                 state = State.DONT_RECEIVED;
-                return true;
+                return Optional.empty();
+            case TelnetCodes.CMD_AYT:
+                sendNul();
+                state = State.READY;
+                return Optional.empty();
+            case TelnetCodes.CMD_EC:
+                state = State.READY;
+                return Optional.of(TelnetCodes.NVT_BS);
+            case TelnetCodes.CMD_EL:
+                state = State.READY;
+                return Optional.of(TelnetCodes.NVT_NAK);
+            case TelnetCodes.CMD_SB:
+                subnegotation = true;
+                state = State.READY;
+                return Optional.empty();
+            case TelnetCodes.CMD_SE:
+                subnegotation = false;
+                state = State.READY;
+                return Optional.empty();
+            case TelnetCodes.CMD_NOP:
+            case TelnetCodes.CMD_DM:
+            case TelnetCodes.CMD_BRK:
+            case TelnetCodes.CMD_IP:
+            case TelnetCodes.CMD_AO:
+            case TelnetCodes.CMD_GA:
+                state = State.READY;
+                return Optional.empty();
             default:
-                return false;
+                return subnegotation ? Optional.empty() : Optional.of(byteRead);
         }
     }
 
     private void receivedWill(byte option) throws IOException {
-        System.out.println(String.format("-> WILL [%d]", option));
-
         synchronized(telnetClientOptions) {
             if (telnetClientOptions.get(option) == null) {
                 telnetClientOptions.put(option, false);
@@ -170,8 +195,6 @@ class TelnetConnection implements Connection {
     }
 
     private void receivedWont(byte option) throws IOException {
-        System.out.println(String.format("-> WONT [%d]", option));
-
         synchronized(telnetClientOptions) {
             if (telnetClientOptions.get(option) == null) {
                 telnetClientOptions.put(option, false);
@@ -181,8 +204,6 @@ class TelnetConnection implements Connection {
     }
 
     private void receivedDo(byte option) throws IOException {
-        System.out.println(String.format("-> DO [%d]", option));
-
         synchronized(telnetServerOptions) {
             if (telnetServerOptions.get(option) == null) {
                 telnetServerOptions.put(option, false);
@@ -192,14 +213,17 @@ class TelnetConnection implements Connection {
     }
 
     private void receivedDont(byte option) throws IOException {
-        System.out.println(String.format("-> DONT [%d]", option));
-
         synchronized(telnetServerOptions) {
             if (telnetServerOptions.get(option) == null) {
                 telnetServerOptions.put(option, false);
                 sendWont(option);
             }
         }
+    }
+
+    private void sendNul() throws IOException {
+        final byte[] response = {TelnetCodes.NVT_NUL};
+        connection.send(response);
     }
 
     /*
